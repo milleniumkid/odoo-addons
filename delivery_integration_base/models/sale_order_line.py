@@ -1,11 +1,13 @@
 # Copyright 2023 Yiğit Budak (https://github.com/yibudak)
-# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl)
+# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
+
+# Copyright 2024 Ismail Cagan Yilmaz (https://github.com/milleniumkid)
+# License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
+
 import logging
 
 from odoo import api, fields, models
 from odoo.tools import float_is_zero
-
-from odoo.addons import decimal_precision as dp
 
 _logger = logging.getLogger(__name__)
 
@@ -15,7 +17,7 @@ class SaleOrderLine(models.Model):
 
     volume = fields.Float(
         string="Volume (in litre)",
-        digits=dp.get_precision("Product Unit of Measure"),
+        digits=(16, 2),
         compute="_compute_line_weight_volume",
         store=True,
         readonly=True,
@@ -23,14 +25,15 @@ class SaleOrderLine(models.Model):
 
     weight = fields.Float(
         string="Weight (in kg)",
-        digits=dp.get_precision("Product Unit of Measure"),
+        digits=(16, 2),
         compute="_compute_line_weight_volume",
         store=True,
         readonly=True,
     )
 
     deci = fields.Float(
-        digits=dp.get_precision("Product Unit of Measure"),
+        string="Order Deci",
+        digits=(16, 2),
         compute="_compute_deci",
     )
 
@@ -67,8 +70,8 @@ class SaleOrderLine(models.Model):
                 or float_is_zero(product.product_volume, uom_dp)
             ):
                 _logger.warning(
-                    "Cannot calculate Volume, Weight or "
-                    f"Volume for product {product.display_name} missing."
+                    f"""Cannot calculate Volume, Weight or Volume for product
+                    {product.display_name} missing."""
                 )
                 line.volume = 0.0
                 line.weight = 0.0

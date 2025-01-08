@@ -1,12 +1,13 @@
 # Copyright 2023 Yiğit Budak (https://github.com/yibudak)
-# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl)
+# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
+
+# Copyright 2024 Ismail Cagan Yilmaz (https://github.com/milleniumkid)
+# License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
 
 from datetime import datetime
 
-from odoo import _, api, fields, models
+from odoo import _, fields, models
 from odoo.exceptions import UserError
-
-from odoo.addons import decimal_precision as dp
 
 
 class SaleGetRatesWizard(models.TransientModel):
@@ -16,7 +17,6 @@ class SaleGetRatesWizard(models.TransientModel):
     carrier_prices = fields.Many2many("delivery.carrier.lines", string="Prices")
     sale_id = fields.Many2one("sale.order", string="Sale Order")
 
-    @api.model
     def create(self, vals):
         """
         Inherit to add carrier prices to the wizard.
@@ -97,8 +97,8 @@ class DeliveryCarrierLines(models.TransientModel):
     carrier_id = fields.Many2one("delivery.carrier", string="Carrier")
     currency_id = fields.Many2one("res.currency", string="Currency")
     price = fields.Monetary(
+        string="Rate Price",
         currency_field="currency_id",
-        digits=dp.get_precision("Product Price"),
     )
     try_currency_id = fields.Many2one(
         "res.currency",
@@ -108,7 +108,6 @@ class DeliveryCarrierLines(models.TransientModel):
     try_price = fields.Monetary(
         string="Main Price",
         currency_field="try_currency_id",
-        digits=dp.get_precision("Product Price"),
     )
     order_id = fields.Many2one("sale.order", string="Sale Order")
-    selected = fields.Boolean(default=False)
+    selected = fields.Boolean(string="Carrier Selected", default=False)

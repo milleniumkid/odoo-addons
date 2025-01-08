@@ -1,5 +1,9 @@
 # Copyright 2023 Yiğit Budak (https://github.com/yibudak)
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
+
+# Copyright 2024 Ismail Cagan Yilmaz (https://github.com/milleniumkid)
+# License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
+
 import math
 from datetime import datetime, timedelta
 
@@ -22,26 +26,29 @@ class DeliveryCarrier(models.Model):
         required=True,
     )
     payment_type = fields.Selection(
+        string="Carrier Payment Type",
         selection=[("customer_pays", "Customer Pays"), ("sender_pays", "Sender Pays")],
         default="sender_pays",
         required=True,
     )
-    default_printer_id = fields.Many2one("printing.printer", string="Default Printer")
+    # default_printer_id = fields.Many2one("printing.printer", string="Default Printer")
     attach_barcode = fields.Boolean(
         string="Attach Barcode to Picking",
         default=False,
         help="If checked, barcode will be attached to picking as a file.",
     )
-    currency_id = fields.Many2one("res.currency", string="Currency", required=True)
+    currency_id = fields.Many2one("res.currency", string="Currency")
     ref_sequence_id = fields.Many2one("ir.sequence", string="Reference Sequence")
     send_sms_customer = fields.Boolean(string="Send SMS to Customer", default=False)
     url_shortener_id = fields.Many2one("short.url.yourls", string="URL Shortener")
     sms_service_id = fields.Many2one("iap.account", string="SMS Service")
 
     barcode_text_1 = fields.Char(
+        string="Carrier Barcode Text 1",
         help="Some static text for this carrier to package labels.",
     )
     deci_type = fields.Selection(
+        string="Carrier Deci Type",
         selection=[
             ("3000", "(3000)"),
             ("4000", "(4000)"),
@@ -56,35 +63,37 @@ class DeliveryCarrier(models.Model):
     )
     # Default values for factor_a and factor_b is important.
     # Do not change them unless you want to break the logarithmic calculation.
-    factor_a = fields.Float(default=2.0)
-    factor_b = fields.Float(default=0.1)
+    factor_a = fields.Float(string="Factor-A", default=2.0)
+    factor_b = fields.Float(string="Factor-B", default=0.1)
 
     show_in_price_table = fields.Boolean(
-        string="Show in Price Table",
+        string="Carrier Show in Price Table",
         help="Show this carrier in Sale Order Shipment " "Price table",
     )
     fuel_surcharge_percentage = fields.Float(
+        string="Carrier Fuel Surcharge Percentage",
         help="Additional Price to add after calculation of tables",
     )
     environment_fee_per_kg = fields.Float(
-        string="Environment Charge per Kg",
+        string="Carrier Environment Charge per Kg",
         help="Environment fee per KG added after fuel surcharge",
     )
     postal_charge_percentage = fields.Float(
+        string="Carrier Postal Charge Percentage",
         help="For shipments below 30kg or Deci additional percentage to add",
     )
     emergency_fee_per_kg = fields.Float(
-        string="Emergency Charge Per Kg",
+        string="Carrier Emergency Charge Per Kg",
         help="Emergency fee added after postal charge percentage",
     )
 
     tracking_url_prefix_no_integration = fields.Char(
-        string="Tracking URL Prefix",
+        string="Carrier Tracking URL Prefix",
         help="Tracking URL prefix for carrier that has no integration.",
     )
 
     delivery_deadline_no_integration = fields.Integer(
-        string="Delivery Deadline (In Days)",
+        string="Carrier Delivery Deadline (In Days)",
         default=3,
         required=True,
         help="Delivery deadline for carrier that has no integration.",
@@ -131,29 +140,27 @@ class DeliveryCarrier(models.Model):
         Update integrated pickings in a batch
         :return:
         """
-        # Todo: implement this method
-        return True
-        # pickings = self.env["stock.picking"].search(
-        #     [
-        #         (
-        #             "carrier_id.delivery_type",
-        #             "not in",
-        #             [False, "fixed", "base_on_rule"],
-        #         ),
-        #         ("carrier_tracking_ref", "!=", False),
-        #         ("date_done", ">", fields.Date.today() - timedelta(days=5)),
-        #         (
-        #             "delivery_state",
-        #             "in",
-        #             ["shipping_recorded_in_carrier", "in_transit"],
-        #         ),
-        #     ]
-        # )
-        #
-        # for picking in pickings:
-        #     method = "%s_tracking_state_update" % picking.delivery_type
-        #     if hasattr(picking.carrier_id, method):
-        #         getattr(picking.carrier_id, method)(picking)
+        pickings = self.env["stock.picking"].search(
+            [
+                (
+                    "carrier_id.delivery_type",
+                    "not in",
+                    [False, "fixed", "base_on_rule"],
+                ),
+                ("carrier_tracking_ref", "!=", False),
+                ("date_done", ">", fields.Date.today() - timedelta(days=5)),
+                (
+                    "delivery_state",
+                    "in",
+                    ["shipping_recorded_in_carrier", "in_transit"],
+                ),
+            ]
+        )
+
+        for picking in pickings:
+            method = f"{picking.delivery_type}_tracking_state_update"
+            if hasattr(picking.carrier_id, method):
+                getattr(picking.carrier_id, method)(picking)
 
     def _sms_notificaton_send(self, picking):
         """
@@ -222,7 +229,8 @@ class DeliveryCarrier(models.Model):
             order = self.env["sale.order"].browse(order)
 
         order = order.with_context(rate_carrier_id=self.id)  # Do not lose context
-        order.order_line.invalidate_model()  # recompute order line deci
+        # invalidate cache to recompute order line deci
+        order.order_line.invalidate_model()
         dp = 4  # decimal precision
 
         deci = sum(order.order_line.mapped("deci"))
@@ -292,8 +300,8 @@ class DeliveryCarrier(models.Model):
         if not criteria_found:
             raise UserError(
                 _(
-                    "No price rule matching this order; "
-                    "delivery cost cannot be computed."
+                    """No price rule matching this order;
+                    delivery cost cannot be computed."""
                 )
             )
 
